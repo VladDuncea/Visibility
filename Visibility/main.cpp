@@ -4,16 +4,32 @@
 #include <SFML/Graphics.hpp>
 
 //Window variables
-const int WINDOW_HEIGHT = 800;
-const int WINDOW_WIDTH = 1500;
+const int WINDOW_HEIGHT = 1500;
+const int WINDOW_WIDTH = 3000;
 
 //resolution
-const int SCALE = 4;
+const int SCALE = 20;
+const int SIZE = 10;
 
-
-void setPos(sf::CircleShape& cs, sf::Vector2f pos)
+float getangle(sf::Vector2f a, sf::Vector2f b) // x1 and y1 are pos of mouse and x2 and y2 are pos of player
 {
-	cs.setPosition({WINDOW_WIDTH / 2 + pos.x * SCALE, WINDOW_HEIGHT / 2 - pos.y * SCALE });
+	double ang, pi = 3.14159265359;
+	ang = atan2(b.y - a.y, b.x - a.x) * (180 / pi);
+	return 360 - ang;
+}
+
+float getdistance(sf::Vector2f a, sf::Vector2f b)
+{
+	return sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y))*SCALE;
+}
+
+void setPos(sf::Shape& shape, sf::Vector2f pos)
+{
+	shape.setPosition({ WINDOW_WIDTH / 2 + pos.x * SCALE , WINDOW_HEIGHT / 2 - pos.y * SCALE });
+}
+void setPos(sf::Vertex& shape, sf::Vector2f pos)
+{
+	shape.position = { (WINDOW_WIDTH - SIZE) / 2 + pos.x * SCALE, (WINDOW_HEIGHT + SIZE) / 2 - pos.y * SCALE };
 }
 
 int main()
@@ -28,18 +44,39 @@ int main()
 	setPos(shape, { 1,1 });
 
 	//create axes:
-	sf::RectangleShape axisx({ WINDOW_WIDTH,1*SCALE });
+	sf::RectangleShape axisx({ WINDOW_WIDTH,SIZE });
+	axisx.setOrigin({ WINDOW_WIDTH / 2,SIZE / 2 });
 	axisx.setFillColor(sf::Color::Yellow);
-	axisx.setPosition({ 0,(WINDOW_HEIGHT + axisx.getSize().y)/2 });
+	setPos(axisx, { 0,0 });
 
-	sf::RectangleShape axisy({ 1*SCALE,WINDOW_HEIGHT });
+	sf::RectangleShape axisy({ SIZE,WINDOW_HEIGHT });
+	axisy.setOrigin({ SIZE / 2,WINDOW_HEIGHT / 2 });
 	axisy.setFillColor(sf::Color::Yellow);
-	axisy.setPosition({ (WINDOW_WIDTH + axisy.getSize().x)/2,0 });
+	setPos(axisy, { 0,0 });
 
-	sf::VertexArray vertexPoints(sf::LinesStrip,3);
-	vertexPoints[0].position = { 100,100 };
-	vertexPoints[1].position = { 500,500 };
-	vertexPoints[2].position = { 500,300 };
+	//vector of points
+	std::vector<sf::Vector2f> points(3);
+	points[0] = { 0,0 };
+	points[1] = { 10,10 };
+	points[2] = { 10,5 };
+		//create "points"
+	sf::CircleShape point1(SIZE);
+	//point1.setOrigin({ SIZE / 2,SIZE / 2 });
+	point1.setFillColor(sf::Color::Red);
+	setPos(point1, points[0]);
+
+	//create lines
+	sf::RectangleShape line1;
+	line1.setSize({ getdistance(points[0],points[1]),SIZE });
+	line1.setOrigin({ 0,SIZE / 2 });
+	line1.setRotation(getangle(points[0], points[1]));
+	setPos(line1, points[0]);
+
+
+	sf::VertexArray vertexPoints(sf::LineStrip,3);
+	setPos(vertexPoints[0], { 0,0 });
+	setPos(vertexPoints[1], { 10,10 });
+	setPos(vertexPoints[2], { 10,5 });
 
 
 	//Event loop
@@ -49,8 +86,11 @@ int main()
 		while (window.pollEvent(event))
 		{
 			if (event.type == sf::Event::Closed)
+			{ 
 				window.close();
+			}
 		}
+		
 
 		window.clear();
 		//draw axes first
@@ -59,6 +99,8 @@ int main()
 
 		//draw lines/points
 		window.draw(vertexPoints);
+		window.draw(line1);
+		window.draw(point1);
 		
 		window.display();
 	}
