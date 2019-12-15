@@ -10,7 +10,7 @@ const int WINDOW_HEIGHT = 1500;
 const int WINDOW_WIDTH = 2500;
 
 //resolution
-const int SCALE = 100;
+const int SCALE = 80;
 const int SIZE = 10;
 
 float getangle(sf::Vector2f a, sf::Vector2f b) // x1 and y1 are pos of mouse and x2 and y2 are pos of player
@@ -32,11 +32,8 @@ void setPos(sf::Vertex& shape, sf::Vector2f pos)
 	shape.position = { (WINDOW_WIDTH - SIZE) / 2 + pos.x * SCALE, (WINDOW_HEIGHT + SIZE) / 2 - pos.y * SCALE };
 }
 
-
 vector<sf::RectangleShape> diagonals;
-
-vector<Triangle> triangulate(vector<Point2D> Polygon, vector<Point2D> Concaves) {
-	vector<Triangle> Result;
+Triangle triangulate(vector<Point2D> &Polygon, vector<Point2D> &Concaves) {
 	size_t n = Polygon.size();
 
 	//default line for diagonals
@@ -44,7 +41,7 @@ vector<Triangle> triangulate(vector<Point2D> Polygon, vector<Point2D> Concaves) 
 	line.setOrigin({ 0,SIZE / 2 });
 	line.setFillColor(sf::Color::Green);
 
-	while (n > 2) {
+	if (n > 3) {
 		for (size_t i = 0; i < n; ++i) {
 			//varf convex
 			if (orientation(Polygon[(i - 1 + n) % n], Polygon[i], Polygon[(i + 1) % n]) > 0) {
@@ -56,8 +53,6 @@ vector<Triangle> triangulate(vector<Point2D> Polygon, vector<Point2D> Concaves) 
 						break;
 					}
 				if (valid) {
-					//avem nou triunghi
-					Result.push_back({ Polygon[(i - 1 + n) % n], Polygon[i], Polygon[(i + 1) % n] });
 
 					//desenam diagonala
 					line.setSize({ getdistance(Polygon[(i - 1 + n) % n],Polygon[(i + 1) % n]),SIZE });
@@ -67,29 +62,37 @@ vector<Triangle> triangulate(vector<Point2D> Polygon, vector<Point2D> Concaves) 
 					diagonals.push_back(line);
 
 					//verificare vecini daca sunt convexi
-					auto it = find(Concaves.begin(), Concaves.end(), Polygon[(i - 1) % n]);
+					auto it = find(Concaves.begin(), Concaves.end(), Polygon[(i - 1 + n) % n]);
 					if (it != Concaves.end() && orientation(Polygon[(i - 2 + n) % n], Polygon[(i - 1 + n) % n], Polygon[(i + 1) % n]) > 0)
 						Concaves.erase(it);
 					it = find(Concaves.begin(), Concaves.end(), Polygon[(i + 1) % n]);
 					if (it != Concaves.end() && orientation(Polygon[(i - 1 + n) % n], Polygon[(i + 1) % n], Polygon[(i + 2) % n]) > 0)
 						Concaves.erase(it);
+
+					//save solution
+					Triangle solution = { Polygon[(i - 1 + n) % n], Polygon[i], Polygon[(i + 1) % n] };
+
 					//sterge varf taiat
 					Polygon.erase(Polygon.begin() + i);
-					n--;
+
+					return solution;
 				}
 			}
 		}
 	}
-	return Result;
-}
 
+	return { Polygon[0],Polygon[1],Polygon[2] };
+	
+}
 
 int main()
 {
+	ifstream fin("poligonmare.in");
+
 #pragma region Init Geometry
 	Point2D P;
 	vector<Point2D> Polygon, Concaves;
-	ifstream fin("date.in");
+	
 	size_t n;
 	fin >> n;
 	for (size_t i = 0; i < n; ++i) {
@@ -105,7 +108,55 @@ int main()
 	}
 #pragma endregion
 
-	vector<Triangle> Triangulation = triangulate(Polygon, Concaves);
+
+#pragma region Init window
+	//Create window
+	sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Visibility", sf::Style::Titlebar | sf::Style::Close);
+	window.setVerticalSyncEnabled(true);
+
+	//create axes:
+	sf::RectangleShape axisx({ WINDOW_WIDTH,SIZE });
+	axisx.setOrigin({ WINDOW_WIDTH / 2,SIZE / 2 });
+	axisx.setFillColor(sf::Color::Black);
+	setPos(axisx, { 0,0 });
+
+	sf::RectangleShape axisy({ SIZE,WINDOW_HEIGHT });
+	axisy.setOrigin({ SIZE / 2,WINDOW_HEIGHT / 2 });
+	axisy.setFillColor(sf::Color::Black);
+	setPos(axisy, { 0,0 });
+
+#pragma endregion
+
+	//create vector of shapes for "points"
+	vector<sf::CircleShape> points;
+
+	//create points
+	sf::CircleShape cs(SIZE);
+	cs.setFillColor(sf::Color::Red);
+	cs.setOrigin({ SIZE,SIZE });
+	for (Point2D p : Polygon)
+	{
+		setPos(cs, p);
+		points.push_back(cs);
+	}
+
+	//create vector of shapes for lines
+	vector<sf::RectangleShape> lines;
+
+	//create lines
+	sf::RectangleShape line({ 10,SIZE });
+	line.setOrigin({ 0,SIZE / 2 });
+	line.setFillColor(sf::Color::Blue);
+	for (size_t i = 0; i < Polygon.size(); i++)
+	{
+		line.setSize({ getdistance(Polygon[i],Polygon[(i + 1) % n]),SIZE });
+		line.setRotation(getangle(Polygon[i], Polygon[(i + 1) % n]));
+		setPos(line, Polygon[i]);
+
+		lines.push_back(line);
+	}
+
+	
 	/*
 	for (auto t : Triangulation) {
 		cout << t.A << ' ' << t.B << ' ' << t.C << "\n";
@@ -154,52 +205,8 @@ int main()
 	Concaves.clear();
 	Polygon.clear();*/
 
-#pragma region Init window
-	//Create window
-	sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Visibility", sf::Style::Titlebar | sf::Style::Close);
-	window.setVerticalSyncEnabled(true);
-
-	//create axes:
-	sf::RectangleShape axisx({ WINDOW_WIDTH,SIZE });
-	axisx.setOrigin({ WINDOW_WIDTH / 2,SIZE / 2 });
-	axisx.setFillColor(sf::Color::Black);
-	setPos(axisx, { 0,0 });
-
-	sf::RectangleShape axisy({ SIZE,WINDOW_HEIGHT });
-	axisy.setOrigin({ SIZE / 2,WINDOW_HEIGHT / 2 });
-	axisy.setFillColor(sf::Color::Black);
-	setPos(axisy, { 0,0 });
-
-#pragma endregion
-
-	//create vector of shapes for "points"
-	vector<sf::CircleShape> points;
-
-	//create points
-	sf::CircleShape cs(SIZE);
-	cs.setFillColor(sf::Color::Red);
-	cs.setOrigin({ SIZE,SIZE });
-	for (Point2D p : Polygon)
-	{
-		setPos(cs, p);
-		points.push_back(cs);
-	}
+	vector<Point2D> polyCopy = Polygon;
 	
-	//create vector of shapes for lines
-	vector<sf::RectangleShape> lines;
-
-	//create lines
-	sf::RectangleShape line({ 10,SIZE });
-	line.setOrigin({ 0,SIZE / 2 });
-	line.setFillColor(sf::Color::Blue);
-	for (int i=0;i<Polygon.size();i++)
-	{
-		line.setSize({ getdistance(Polygon[i],Polygon[(i + 1) % n]),SIZE });
-		line.setRotation(getangle(Polygon[i], Polygon[(i + 1) % n]));
-		setPos(line, Polygon[i]);
-
-		lines.push_back(line);
-	}
 
 	//Event loop
 	while (window.isOpen())
@@ -213,6 +220,12 @@ int main()
 			}
 		}
 		
+		//draw one more triangle
+		if (polyCopy.size() >= 3)
+		{
+			triangulate(polyCopy, Concaves);
+			
+		}
 
 		window.clear(sf::Color(158, 158, 157));
 		//draw axes first
@@ -232,6 +245,8 @@ int main()
 			window.draw(drawable);
 		
 		window.display();
+		sf::sleep(sf::milliseconds(1000));
+		
 	}
 
 

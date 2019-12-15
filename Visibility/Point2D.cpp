@@ -62,9 +62,9 @@ bool isInside(const Point2D& A, const Point2D& B, const Point2D& C, const Point2
 	//check if point is on edges
 	if (!allowOnEdge && (ABP == 0 || APC == 0 || PBC == 0))
 		return false;
-
+	double eps = 0.001;
 	// Check if sum of A1, A2and A3 is same as A
-	return (ABC == PBC + APC + ABP);
+	return (PBC + APC + ABP <=ABC + eps && PBC + APC + ABP >= ABC - eps);
 }
 
 ostream& operator<<(ostream& out, const Triangle& Obj) {
