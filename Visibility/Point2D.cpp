@@ -27,6 +27,11 @@ bool Point2D::operator!=(const Point2D& Obj) const {
 	return !(*this == Obj);
 }
 
+Point2D::operator sf::Vector2f() const
+{
+	return { (float)X,(float)Y };
+}
+
 istream& operator>>(istream& in, Point2D& Obj) {
 	in >> Obj.X >> Obj.Y;
 	return in;

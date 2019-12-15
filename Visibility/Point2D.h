@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <set>
+#include <SFML/Graphics.hpp>
 
 using namespace std;
 
@@ -12,7 +13,7 @@ public:
 	bool operator==(const Point2D& Obj) const;
 	bool operator<(const Point2D& Obj) const;
 	bool operator!=(const Point2D& Obj) const;
-
+	operator sf::Vector2f() const;
 };
 
 istream& operator>>(istream& in, Point2D& Obj);
