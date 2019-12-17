@@ -3,15 +3,16 @@
 #include <fstream>
 #include <SFML/Graphics.hpp>
 #include <queue>
+#include <ctime>
 #include "Point2D.h"
 
 //Window variables
-const int WINDOW_HEIGHT = 1500;
-const int WINDOW_WIDTH = 2500;
+const int WINDOW_HEIGHT = 900;
+const int WINDOW_WIDTH = 1300;
 
 //resolution
-const int SCALE = 80;
-const int SIZE = 10;
+const int SCALE = 40;
+const int SIZE = 5;
 
 float getangle(sf::Vector2f a, sf::Vector2f b) // x1 and y1 are pos of mouse and x2 and y2 are pos of player
 {
@@ -30,6 +31,11 @@ void setPos(sf::Shape& shape, sf::Vector2f pos)
 void setPos(sf::Vertex& shape, sf::Vector2f pos)
 {
 	shape.position = { (WINDOW_WIDTH - SIZE) / 2 + pos.x * SCALE, (WINDOW_HEIGHT + SIZE) / 2 - pos.y * SCALE };
+}
+
+void drawTriangle(Triangle t,vector<sf::ConvexShape> &drawVector)
+{
+
 }
 
 vector<sf::RectangleShape> diagonals;
@@ -80,8 +86,11 @@ Triangle triangulate(vector<Point2D> &Polygon, vector<Point2D> &Concaves) {
 			}
 		}
 	}
-
-	return { Polygon[0],Polygon[1],Polygon[2] };
+	Triangle solution = { Polygon[0],Polygon[1],Polygon[2] };
+	Polygon.erase(Polygon.end()-1);
+	Polygon.erase(Polygon.end()-1);
+	Polygon.erase(Polygon.end()-1);
+	return solution;
 	
 }
 
@@ -92,7 +101,8 @@ int main()
 #pragma region Init Geometry
 	Point2D P;
 	vector<Point2D> Polygon, Concaves;
-	
+	vector<Triangle> Triangulation;
+
 	size_t n;
 	fin >> n;
 	for (size_t i = 0; i < n; ++i) {
@@ -156,58 +166,17 @@ int main()
 		lines.push_back(line);
 	}
 
-	
-	/*
-	for (auto t : Triangulation) {
-		cout << t.A << ' ' << t.B << ' ' << t.C << "\n";
-	}
-	map<Triangle, vector<Triangle>> Adjacence;
-	map<Triangle, bool> Visited;
-	for (Triangle t1 : Triangulation) {
-		Visited[t1] = false;
-		for (Triangle t2 : Triangulation) {
-			if (isAdjacent(t1, t2))
-				Adjacence[t1].push_back(t2);
-		}
-	}
-	queue<Triangle> tQueue;
-	for (Triangle t : Triangulation) {
-		if (isInside(t.A, t.B, t.C, P, true)) {
-			tQueue.push(t);
-			cout << "Triangle: " << t << '\n';
-			Visited[t] = true;
-			break;
-		}
-	}
-	cout << "Observable:\n";
-	while (!tQueue.empty()) {
-		Triangle Front = tQueue.front();
-		tQueue.pop();
-		size_t count = 0;
-
-		//TODO: trebuie sa verifice doar cele doua laturi neadiacente
-		count += orientation(Front.A, Front.B, Front.C) * orientation(P, Front.B, Front.C) >= 0;
-		count += orientation(Front.A, Front.B, Front.C) * orientation(Front.A, P, Front.C) >= 0;
-		count += orientation(Front.A, Front.B, Front.C) * orientation(Front.A, Front.B, P) >= 0;
-		if (count >= 2) {
-			cout << Front << '\n';
-			for (Triangle t : Adjacence[Front]) {
-				if (!Visited[t]) {
-					Visited[t] = true;
-					tQueue.push(t);
-				}
-			}
-		}
-	}
-	Visited.clear();
-	Adjacence.clear();
-	Triangulation.clear();
-	Concaves.clear();
-	Polygon.clear();*/
+	//vector of triangle background
+	vector<sf::ConvexShape> triangleBackground;
 
 	vector<Point2D> polyCopy = Polygon;
-	
+	bool drawn_point = false;
+	bool done_visibility = false;
+	map<Triangle, vector<Triangle>> Adjacence;
+	map<Triangle, bool> Visited;
+	queue<Triangle> tQueue;
 
+	int milis = 0;
 	//Event loop
 	while (window.isOpen())
 	{
@@ -220,17 +189,75 @@ int main()
 			}
 		}
 		
-		//draw one more triangle
-		if (polyCopy.size() >= 3)
+		/*
+		if (milis < 1000)
 		{
-			triangulate(polyCopy, Concaves);
+			milis+=
+		}*/
+
+		//draw one more triangle
+		if (polyCopy.size() > 3)
+		{
+			Triangulation.push_back(triangulate(polyCopy, Concaves));
 			
+		}
+		else if(!drawn_point)
+		{
+			setPos(cs, P);
+			cs.setFillColor(sf::Color(252, 186, 3));
+			points.push_back(cs);
+			drawn_point = true;
+
+			for (Triangle t1 : Triangulation) {
+				Visited[t1] = false;
+				for (Triangle t2 : Triangulation) {
+					if (isAdjacent(t1, t2))
+						Adjacence[t1].push_back(t2);
+				}
+			}
+
+			for (Triangle t : Triangulation) {
+				if (isInside(t.A, t.B, t.C, P, true)) {
+					tQueue.push(t);
+					cout << "Triangle: " << t << '\n';
+					Visited[t] = true;
+					break;
+				}
+			}
+			
+			//draw principal triangle
+			drawTriangle(tQueue.front(), triangleBackground);
+		}
+		else if(!tQueue.empty())
+		{
+			Triangle Front = tQueue.front();
+			tQueue.pop();
+			size_t count = 0;
+
+			count += orientation(Front.A, Front.B, Front.C) * orientation(P, Front.B, Front.C) >= 0;
+			count += orientation(Front.A, Front.B, Front.C) * orientation(Front.A, P, Front.C) >= 0;
+			count += orientation(Front.A, Front.B, Front.C) * orientation(Front.A, Front.B, P) >= 0;
+			if (count >= 2) {
+				cout << Front << '\n';
+				for (Triangle t : Adjacence[Front]) {
+					if (!Visited[t]) {
+						Visited[t] = true;
+						tQueue.push(t);
+					}
+				}
+
+				//draw triangle
+			}
 		}
 
 		window.clear(sf::Color(158, 158, 157));
 		//draw axes first
 		window.draw(axisx);
 		window.draw(axisy);
+
+		//draw backgrounds
+		for (auto drawable : triangleBackground)
+			window.draw(drawable);
 
 		//draw lines
 		for (auto drawable : lines)
@@ -249,6 +276,11 @@ int main()
 		
 	}
 
+	Visited.clear();
+	Adjacence.clear();
+	Triangulation.clear();
+	Concaves.clear();
+	Polygon.clear();
 
 	return 0;
 }
